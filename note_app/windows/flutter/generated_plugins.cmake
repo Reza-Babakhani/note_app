@@ -3,8 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  pasteboard
-  url_launcher_windows
+  system_theme
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

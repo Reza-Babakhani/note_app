@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'assets/colors/my_palette.dart';
 import 'screens/note.dart';
+import 'package:adaptive_theme/adaptive_theme.dart';
+import 'package:system_theme/system_theme.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(const MyApp());
 }
 
@@ -11,14 +15,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'My Notes',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: MyPalette.firstPalette,
+    return AdaptiveTheme(
+      light: ThemeData(
+          brightness: Brightness.light,
+          primarySwatch: MyPalette.firstPalette,
+          textSelectionTheme: const TextSelectionThemeData(
+              selectionColor: Colors.red, selectionHandleColor: Colors.red)),
+      dark: ThemeData(
+          brightness: Brightness.dark,
+          primarySwatch: MyPalette.firstPalette,
+          textSelectionTheme: const TextSelectionThemeData(
+              selectionColor: Colors.red, selectionHandleColor: Colors.red)),
+      initial: SystemTheme.isDarkMode
+          ? AdaptiveThemeMode.dark
+          : AdaptiveThemeMode.light,
+      builder: (theme, darkTheme) => MaterialApp(
+        title: 'My Notes',
+        theme: theme,
+        darkTheme: darkTheme,
+        themeMode: SystemTheme.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+        debugShowCheckedModeBanner: false,
+        home: const MyHomePage(),
+        routes: {NoteScreen.routeName: (ctx) => const NoteScreen()},
       ),
-      home: const MyHomePage(),
-      routes: {NoteScreen.routeName: (ctx) => const NoteScreen()},
     );
   }
 }
