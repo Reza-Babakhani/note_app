@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'assets/colors/my_palette.dart';
+import 'package:note_app/services/theme_manager.dart';
+import 'package:provider/provider.dart';
 import 'screens/note.dart';
-import 'package:adaptive_theme/adaptive_theme.dart';
-import 'package:system_theme/system_theme.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  runApp(const MyApp());
+  return runApp(ChangeNotifierProvider<ThemeNotifier>(
+    create: (_) => ThemeNotifier(),
+    child: const MyApp(),
+  ));
 }
 
 class MyApp extends StatelessWidget {
@@ -15,30 +15,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AdaptiveTheme(
-      light: ThemeData(
-          brightness: Brightness.light,
-          primarySwatch: MyPalette.firstPalette,
-          textSelectionTheme: const TextSelectionThemeData(
-              selectionColor: Colors.red, selectionHandleColor: Colors.red)),
-      dark: ThemeData(
-          brightness: Brightness.dark,
-          primarySwatch: MyPalette.firstPalette,
-          textSelectionTheme: const TextSelectionThemeData(
-              selectionColor: Colors.red, selectionHandleColor: Colors.red)),
-      initial: SystemTheme.isDarkMode
-          ? AdaptiveThemeMode.dark
-          : AdaptiveThemeMode.light,
-      builder: (theme, darkTheme) => MaterialApp(
+    return Consumer<ThemeNotifier>(builder: (context, theme, _) {
+      return MaterialApp(
         title: 'My Notes',
-        theme: theme,
-        darkTheme: darkTheme,
-        themeMode: SystemTheme.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+        theme: theme.getTheme(),
         debugShowCheckedModeBanner: false,
         home: const MyHomePage(),
         routes: {NoteScreen.routeName: (ctx) => const NoteScreen()},
-      ),
-    );
+      );
+    });
   }
 }
 
@@ -95,7 +80,19 @@ class _MyHomePageState extends State<MyHomePage> {
                     });
                   },
                   icon: const Icon(Icons.delete))
-              : Container()
+              : Consumer<ThemeNotifier>(
+                  builder: (context, theme, _) => IconButton(
+                        onPressed: () {
+                          if (theme.isDarkMode()) {
+                            theme.setLightMode();
+                          } else {
+                            theme.setDarkMode();
+                          }
+                        },
+                        icon: Icon(theme.isDarkMode()
+                            ? Icons.light_mode
+                            : Icons.dark_mode),
+                      ))
         ],
         leading: _isSelectMode
             ? IconButton(
@@ -109,41 +106,39 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       extendBodyBehindAppBar: true,
       floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.edit),
           onPressed: (() {
             Navigator.of(context).pushNamed(NoteScreen.routeName);
-          })),
-      body: Container(
-        child: ListView.builder(
-            itemCount: 100,
-            itemBuilder: (ctx, i) {
-              return InkWell(
-                  onLongPress: () {
-                    setState(() {
-                      _toggleSelectItem(i);
+          }),
+          child: const Icon(Icons.edit)),
+      body: ListView.builder(
+          itemCount: 100,
+          itemBuilder: (ctx, i) {
+            return InkWell(
+                onLongPress: () {
+                  setState(() {
+                    _toggleSelectItem(i);
 
+                    if (_selectedItems.isEmpty) {
+                      _isSelectMode = false;
+                    } else {
+                      _isSelectMode = true;
+                    }
+                  });
+                },
+                onTap: () {
+                  setState(() {
+                    if (_isSelectMode) {
+                      _toggleSelectItem(i);
                       if (_selectedItems.isEmpty) {
                         _isSelectMode = false;
                       } else {
                         _isSelectMode = true;
                       }
-                    });
-                  },
-                  onTap: () {
-                    setState(() {
-                      if (_isSelectMode) {
-                        _toggleSelectItem(i);
-                        if (_selectedItems.isEmpty) {
-                          _isSelectMode = false;
-                        } else {
-                          _isSelectMode = true;
-                        }
-                      }
-                    });
-                  },
-                  child: NoteListItem(i, _isSelected(i)));
-            }),
-      ),
+                    }
+                  });
+                },
+                child: NoteListItem(i, _isSelected(i)));
+          }),
     );
   }
 }
@@ -160,11 +155,13 @@ class NoteListItem extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(boxShadow: [
           BoxShadow(
-            color: _isSelected ? Colors.red : Colors.grey,
+            color: _isSelected
+                ? Colors.red
+                : Theme.of(context).colorScheme.primary,
             spreadRadius: _isSelected ? 3 : 0,
           ),
-          const BoxShadow(
-            color: Colors.white,
+          BoxShadow(
+            color: Theme.of(context).primaryColor,
             spreadRadius: 1.0,
             blurRadius: 8.0,
           ),
