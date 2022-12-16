@@ -1,8 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+
+import '../models/note.dart';
+import '../providers/notes.dart';
 
 class NoteScreen extends StatefulWidget {
   static const String routeName = "/note";
+
   const NoteScreen({super.key});
 
   @override
@@ -11,15 +19,25 @@ class NoteScreen extends StatefulWidget {
 
 class _NoteScreenState extends State<NoteScreen> {
   final TextEditingController _titleController = TextEditingController();
+  final QuillController _editorController = QuillController.basic();
+  bool _isToolbarShows = false;
+  late String _id;
+  bool _isInit = true;
 
   @override
-  void initState() {
-    _titleController.text = "";
-    super.initState();
-  }
+  void didChangeDependencies() {
+    if (_isInit) {
+      _id = ModalRoute.of(context)!.settings.arguments as String;
+      if (_id.isNotEmpty) {
+        var note = Provider.of<Notes>(context).getById(_id);
+        _titleController.text = note.title;
+        _editorController.document = Document.fromDelta(note.content);
 
-  QuillController _editorController = QuillController.basic();
-  bool _isToolbarShows = false;
+        _isInit = false;
+      }
+    }
+    super.didChangeDependencies();
+  }
 
   void toggleToolbar() {
     setState(() {
@@ -55,6 +73,30 @@ class _NoteScreenState extends State<NoteScreen> {
               ),
             ),
             centerTitle: true,
+            actions: [
+              IconButton(
+                  onPressed: () async {
+                    if (_id.isEmpty) {
+                      await Provider.of<Notes>(context, listen: false).insert(
+                          Note(
+                              const Uuid().v1().toString(),
+                              _titleController.text.isEmpty
+                                  ? "Untitled"
+                                  : _titleController.text,
+                              _editorController.document.toDelta(),
+                              DateTime.now()));
+                    } else {
+                      await Provider.of<Notes>(context, listen: false).update(
+                        _id,
+                        _titleController.text,
+                        _editorController.document.toDelta(),
+                      );
+                    }
+
+                    Navigator.of(context).pop();
+                  },
+                  icon: const Icon(Icons.done_outline_rounded)),
+            ],
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
           ),
@@ -81,10 +123,11 @@ class _NoteScreenState extends State<NoteScreen> {
                         toolbarSectionSpacing: 0,
                         customButtons: [
                           QuillCustomButton(
-                              icon: Icons.keyboard_arrow_down,
-                              onTap: () {
-                                toggleToolbar();
-                              })
+                            icon: Icons.keyboard_arrow_down,
+                            onTap: () {
+                              toggleToolbar();
+                            },
+                          ),
                         ],
                       )
                     : Container(),

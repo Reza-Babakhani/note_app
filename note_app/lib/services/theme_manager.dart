@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../assets/colors/my_palette.dart';
 import 'storage_manager.dart';
-import 'package:system_theme/system_theme.dart';
 
 class ThemeNotifier with ChangeNotifier {
   final darkTheme = ThemeData(
@@ -10,7 +9,6 @@ class ThemeNotifier with ChangeNotifier {
     brightness: Brightness.dark,
     backgroundColor: const Color(0xFF212121),
     dividerColor: Colors.black12,
-    
   );
 
   final lightTheme = ThemeData(
@@ -19,7 +17,6 @@ class ThemeNotifier with ChangeNotifier {
     brightness: Brightness.light,
     backgroundColor: const Color(0xFFE5E5E5),
     dividerColor: Colors.white54,
-    
   );
 
   ThemeData? _themeData;
@@ -27,12 +24,13 @@ class ThemeNotifier with ChangeNotifier {
 
   ThemeNotifier() {
     StorageManager.readData('themeMode').then((value) {
-      //print('value read from storage: ' + value.toString());
       var themeMode = value ?? 'light';
       if (themeMode == 'light') {
         _themeData = lightTheme;
+        _isDarkMode = false;
       } else {
         _themeData = darkTheme;
+        _isDarkMode = true;
       }
       notifyListeners();
     });
@@ -54,19 +52,7 @@ class ThemeNotifier with ChangeNotifier {
   }
 
   ThemeData getTheme() {
-    if (_themeData == null) {
-      if (SystemTheme.isDarkMode) {
-        _themeData = darkTheme;
-        StorageManager.saveData('themeMode', 'dark');
-        _isDarkMode = true;
-      } else {
-        _themeData = lightTheme;
-        StorageManager.saveData('themeMode', 'light');
-        _isDarkMode = false;
-      }
-    }
-
-    return _themeData!;
+    return _themeData ?? lightTheme;
   }
 
   bool isDarkMode() {

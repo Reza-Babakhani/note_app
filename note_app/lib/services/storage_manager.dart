@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageManager {
-  static void saveData(String key, dynamic value) async {
+  static Future saveData(String key, dynamic value) async {
     final prefs = await SharedPreferences.getInstance();
     if (value is int) {
       prefs.setInt(key, value);

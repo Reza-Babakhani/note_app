@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:note_app/providers/notes.dart';
 import 'package:note_app/services/theme_manager.dart';
 import 'package:provider/provider.dart';
-import 'screens/note.dart';
+import 'models/note.dart';
+import 'screens/note_screen.dart';
 
 void main() {
   return runApp(ChangeNotifierProvider<ThemeNotifier>(
@@ -15,15 +17,20 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeNotifier>(builder: (context, theme, _) {
-      return MaterialApp(
-        title: 'My Notes',
-        theme: theme.getTheme(),
-        debugShowCheckedModeBanner: false,
-        home: const MyHomePage(),
-        routes: {NoteScreen.routeName: (ctx) => const NoteScreen()},
-      );
-    });
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (ctx) => Notes()),
+      ],
+      child: Consumer<ThemeNotifier>(builder: (context, theme, _) {
+        return MaterialApp(
+          title: 'My Notes',
+          theme: theme.getTheme(),
+          debugShowCheckedModeBanner: false,
+          home: const MyHomePage(),
+          routes: {NoteScreen.routeName: (ctx) => const NoteScreen()},
+        );
+      }),
+    );
   }
 }
 
@@ -35,27 +42,41 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final List<int> _selectedItems = [];
+  final List<String> _selectedItems = [];
   bool _isSelectMode = false;
-  void _toggleSelectItem(index) {
-    if (_selectedItems.contains(index)) {
-      _selectedItems.remove(index);
+  late List<Note> _notes;
+  bool _isInit = true;
+  bool _isLoading = true;
+
+  @override
+  void didChangeDependencies() async {
+    if (_isInit) {
+      await Provider.of<Notes>(context).fetch();
+
+      _isInit = false;
+      _isLoading = false;
+    }
+    super.didChangeDependencies();
+  }
+
+  void _toggleSelectItem(String id) {
+    if (_selectedItems.contains(id)) {
+      _selectedItems.remove(id);
     } else {
-      _selectedItems.add(index);
+      _selectedItems.add(id);
     }
   }
 
-  bool _isSelected(index) {
-    if (_selectedItems.contains(index)) {
+  bool _isSelected(String id) {
+    if (_selectedItems.contains(id)) {
       return true;
     } else {
       return false;
     }
   }
 
-  void _deleteSelectedItems() {
-    //TODO delete selected items
-
+  void _deleteSelectedItems() async {
+    await Provider.of<Notes>(context, listen: false).deleteMany(_selectedItems);
     _deselectAll();
   }
 
@@ -66,6 +87,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    _notes = Provider.of<Notes>(context).all;
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Notes"),
@@ -110,43 +132,62 @@ class _MyHomePageState extends State<MyHomePage> {
             Navigator.of(context).pushNamed(NoteScreen.routeName);
           }),
           child: const Icon(Icons.edit)),
-      body: ListView.builder(
-          itemCount: 100,
-          itemBuilder: (ctx, i) {
-            return InkWell(
-                onLongPress: () {
-                  setState(() {
-                    _toggleSelectItem(i);
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : _notes.isEmpty
+              ? const Center(
+                  child: Text(
+                    "Your notes list is empty.",
+                    style: TextStyle(fontSize: 18),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: _notes.length,
+                  itemBuilder: (ctx, i) {
+                    return InkWell(
+                        onLongPress: () {
+                          setState(() {
+                            _toggleSelectItem(_notes[i].id);
 
-                    if (_selectedItems.isEmpty) {
-                      _isSelectMode = false;
-                    } else {
-                      _isSelectMode = true;
-                    }
-                  });
-                },
-                onTap: () {
-                  setState(() {
-                    if (_isSelectMode) {
-                      _toggleSelectItem(i);
-                      if (_selectedItems.isEmpty) {
-                        _isSelectMode = false;
-                      } else {
-                        _isSelectMode = true;
-                      }
-                    }
-                  });
-                },
-                child: NoteListItem(i, _isSelected(i)));
-          }),
+                            if (_selectedItems.isEmpty) {
+                              _isSelectMode = false;
+                            } else {
+                              _isSelectMode = true;
+                            }
+                          });
+                        },
+                        onTap: () async {
+                          if (_isSelectMode) {
+                            setState(() {
+                              _toggleSelectItem(_notes[i].id);
+                              if (_selectedItems.isEmpty) {
+                                _isSelectMode = false;
+                              } else {
+                                _isSelectMode = true;
+                              }
+                            });
+                          } else {
+                            await Navigator.of(context).pushNamed(
+                                NoteScreen.routeName,
+                                arguments: _notes[i].id);
+
+                            await Provider.of<Notes>(context, listen: false)
+                                .fetch();
+                          }
+                        },
+                        child:
+                            NoteListItem(_notes[i], _isSelected(_notes[i].id)));
+                  }),
     );
   }
 }
 
 class NoteListItem extends StatelessWidget {
-  final int _i;
+  final Note _note;
   final bool _isSelected;
-  const NoteListItem(this._i, this._isSelected, {super.key});
+  const NoteListItem(this._note, this._isSelected, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -173,14 +214,14 @@ class NoteListItem extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              _isSelected ? "✓ Title" : "Title",
+              _isSelected ? "✓ ${_note.title}" : _note.title,
               style: TextStyle(
                   color: Theme.of(context).colorScheme.primary,
                   fontSize: 18,
                   fontWeight: FontWeight.w500),
             ),
             Text(
-              "modified at: 2022 dec 10",
+              _note.modifiedAt,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.primary,
                 fontSize: 12,
