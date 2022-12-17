@@ -21,15 +21,15 @@ class _NoteScreenState extends State<NoteScreen> {
   final TextEditingController _titleController = TextEditingController();
   final QuillController _editorController = QuillController.basic();
   bool _isToolbarShows = false;
-  late String _id;
+  String? _id;
   bool _isInit = true;
 
   @override
   void didChangeDependencies() {
     if (_isInit) {
-      _id = ModalRoute.of(context)!.settings.arguments as String;
-      if (_id.isNotEmpty) {
-        var note = Provider.of<Notes>(context).getById(_id);
+      _id = ModalRoute.of(context)!.settings.arguments as String?;
+      if (_id != null) {
+        var note = Provider.of<Notes>(context).getById(_id!);
         _titleController.text = note.title;
         _editorController.document = Document.fromDelta(note.content);
 
@@ -76,7 +76,7 @@ class _NoteScreenState extends State<NoteScreen> {
             actions: [
               IconButton(
                   onPressed: () async {
-                    if (_id.isEmpty) {
+                    if (_id == null) {
                       await Provider.of<Notes>(context, listen: false).insert(
                           Note(
                               const Uuid().v1().toString(),
@@ -87,7 +87,7 @@ class _NoteScreenState extends State<NoteScreen> {
                               DateTime.now()));
                     } else {
                       await Provider.of<Notes>(context, listen: false).update(
-                        _id,
+                        _id!,
                         _titleController.text,
                         _editorController.document.toDelta(),
                       );

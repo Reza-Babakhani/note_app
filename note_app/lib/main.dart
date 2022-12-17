@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'models/note.dart';
 import 'screens/note_screen.dart';
 
-void main() {
+void main() async {
   return runApp(ChangeNotifierProvider<ThemeNotifier>(
     create: (_) => ThemeNotifier(),
     child: const MyApp(),
@@ -172,9 +172,6 @@ class _MyHomePageState extends State<MyHomePage> {
                             await Navigator.of(context).pushNamed(
                                 NoteScreen.routeName,
                                 arguments: _notes[i].id);
-
-                            await Provider.of<Notes>(context, listen: false)
-                                .fetch();
                           }
                         },
                         child:
